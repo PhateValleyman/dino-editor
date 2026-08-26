@@ -310,6 +310,110 @@ def cmd_dino_set_all_level(json_path, level):
         print("VAROVÁNÍ: level > 6 riskuje pád při načítání (viz dino_set_level).")
     print(f"OK  nastaveno level={level} u {n} dinosaurů")
 
+def cmd_dino_preview(json_path, index):
+    """Pravý panel: detailní statistiky vybraného dinosaura."""
+    RESET = "\033[0m"; BOLD = "\033[1m"; CYAN = "\033[36m"; GREEN = "\033[32m"
+    YELLOW = "\033[33m"; MAGENTA = "\033[35m"; DIM = "\033[2m"
+
+    d = load(json_path)
+    dinos = _iter_dinos(d)
+    idx = int(index)
+    if idx < 0 or idx >= len(dinos):
+        print("Neplatný index dinosaura.")
+        return
+    cage_id, cage, dino = dinos[idx]
+
+    level = dino.get('_Level', 0)
+    special = dino.get('_Special', False)
+    level_color = GREEN if level >= 6 else (YELLOW if level >= 4 else "\033[31m")
+
+    print(f"{BOLD}{CYAN}=== {dino.get('_ID')} (#{idx}) ==={RESET}")
+    print()
+    print(f"{DIM}Klec:{RESET}          {cage_id}")
+    print(f"{DIM}GUID:{RESET}          {dino.get('_GUID')}")
+    print()
+    print(f"{DIM}Level:{RESET}         {level_color}{level}{RESET}  {DIM}(bezpečné max 6){RESET}")
+    print(f"{DIM}Unicorn:{RESET}       {(MAGENTA + 'ANO (barevný)' + RESET) if special else 'ne'}")
+    print()
+    print(f"{DIM}Boost Power:{RESET}   {dino.get('_BoostPower', 0)}")
+    print(f"{DIM}Boost HP:{RESET}      {dino.get('_BoostHP', 0)}")
+    print(f"{DIM}Boost Speed:{RESET}   {dino.get('_BoostSpeed', 0)}")
+    print(f"{DIM}Boost Defense:{RESET} {dino.get('_BoostDefense', 0)}")
+    print()
+    print(f"{DIM}Poprvé viděn:{RESET}  {dino.get('_FirstTime')}")
+    print(f"{DIM}Arena reborn:{RESET}  {dino.get('_ArenaRebornTime')}")
+    print()
+    print(f"{DIM}--- klec celkem ---{RESET}")
+    print(f"{DIM}Celkem dinů v kleci:{RESET} {cage.get('_TotalDinosNo')}")
+    print(f"{DIM}Golds:{RESET}               {cage.get('_GoldsNo')}")
+
+DINO_FIELD_LABELS = [
+    ("level",         "Level"),
+    ("special",       "Unicorn (barevný)"),
+    ("boostpower",    "Boost Power"),
+    ("boosthp",       "Boost HP"),
+    ("boostspeed",    "Boost Speed"),
+    ("boostdefense",  "Boost Defense"),
+]
+
+def cmd_dino_fields(json_path, index):
+    """Levý panel druhé úrovně: seznam upravitelných polí vybraného dina."""
+    d = load(json_path)
+    dinos = _iter_dinos(d)
+    idx = int(index)
+    if idx < 0 or idx >= len(dinos):
+        print("neplatny|Neplatný index dinosaura")
+        return
+    _, _, dino = dinos[idx]
+    values = {
+        "level": dino.get('_Level', 0),
+        "special": "ano" if dino.get('_Special') else "ne",
+        "boostpower": dino.get('_BoostPower', 0),
+        "boosthp": dino.get('_BoostHP', 0),
+        "boostspeed": dino.get('_BoostSpeed', 0),
+        "boostdefense": dino.get('_BoostDefense', 0),
+    }
+    for key, label in DINO_FIELD_LABELS:
+        print(f"{key}|{label} = {values[key]}")
+
+def cmd_dino_set_field(json_path, index, field_key, value):
+    d = load(json_path)
+    dinos = _iter_dinos(d)
+    idx = int(index)
+    if idx < 0 or idx >= len(dinos):
+        print("CHYBA: neplatný index dinosaura.")
+        return
+    _, _, dino = dinos[idx]
+    if field_key == "level":
+        lvl = int(value)
+        if lvl > 6:
+            print("VAROVÁNÍ: level > 6 může přesáhnout interní grafickou tabulku hry "
+                  "(ověřeno pádem, tabulka má jen 6 položek).")
+        dino['_Level'] = lvl
+    elif field_key == "special":
+        dino['_Special'] = value.strip().lower() in ("1", "a", "ano", "true", "y", "yes")
+    elif field_key == "boostpower":
+        dino['_BoostPower'] = int(value)
+    elif field_key == "boosthp":
+        dino['_BoostHP'] = int(value)
+    elif field_key == "boostspeed":
+        dino['_BoostSpeed'] = int(value)
+    elif field_key == "boostdefense":
+        dino['_BoostDefense'] = int(value)
+    else:
+        print(f"CHYBA: neznámé pole '{field_key}'")
+        return
+    dump(json_path, d)
+    print(f"OK  {field_key} nastaveno")
+
+def cmd_dino_fzf_lines(json_path):
+    """Řádky pro fzf výběr dinosaura: 'idx|zbytek na zobrazení' (delimiter '|')."""
+    d = load(json_path)
+    for i, (cage_id, cage, dino) in enumerate(_iter_dinos(d)):
+        dtype = "UNICORN" if dino.get('_Special') else "normal"
+        print(f"{i}|{cage_id:<12} {str(dino.get('_ID', '')):<10} "
+              f"lvl={dino.get('_Level', 0):<3} {dtype:<8} {dino.get('_GUID', '')}")
+
 def cmd_dino_set_boost(json_path, index, power, hp, speed, defense):
     d = load(json_path)
     dinos = _iter_dinos(d)
@@ -530,7 +634,14 @@ def cmd_set_path(json_path, path, value):
 if __name__ == '__main__':
     cmd = sys.argv[1]
     args = sys.argv[2:]
-    globals()[f"cmd_{cmd}"](*args)
+    try:
+        globals()[f"cmd_{cmd}"](*args)
+    except BrokenPipeError:
+        # preview panel ve fzf může výstup uříznout (scroll/resize) — nejde o chybu
+        try:
+            sys.stdout.close()
+        except Exception:
+            pass
 PYEOF
 
 run_engine() {
@@ -623,88 +734,90 @@ menu_currency() {
 CURR_LIST=(_CoinsNo _BillsNo _PiggyBank _PiggyBankCollectedCoins _StonesNo _LikesNo _XPNum _IncubatedEggsNo)
 
 select_dino_fzf() {
+    # Levý panel: seznam dinosaurů (šipky nahoru/dolů). Pravý panel: živý
+    # náhled statistik aktuálně podsvíceného dina (aktualizuje se za pohybu).
+    # Enter = vybrat pro editaci, Esc = zpět (prázdný výstup).
+    local py="/data/data/com.termux/files/usr/bin/python3.14"
+    local fzfbin="/data/data/com.termux/files/usr/bin/fzf"
 
-    /data/data/com.termux/files/usr/bin/python3.14 - "$WORK_JSON" <<'PY' |
-import json,sys
+    {
+        echo "BULK|>>> HROMADNÉ AKCE (level/unicorn u všech, doplnit kosti) <<<"
+        run_engine dino_fzf_lines "$WORK_JSON"
+    } | "$fzfbin" \
+        --ansi --border --height=80% --layout=reverse \
+        --delimiter='|' --with-nth=2.. \
+        --preview="[ {1} = BULK ] && echo 'Hromadné akce nad všemi dinosaury.' || \"$py\" \"$ENGINE\" dino_preview \"$WORK_JSON\" {1}" \
+        --preview-window=right:55%:wrap \
+        --header='↑/↓ vyber dinosaura • Enter = upravit • Esc = zpět' \
+        --prompt="Dinosaurus > " \
+    | cut -d'|' -f1
+}
 
-path=sys.argv[1]
+edit_dino_fzf() {
+    # Druhá úroveň: seznam upravitelných polí zvoleného dina vlevo,
+    # napravo pořád stejný živý přehled celého dina pro kontext.
+    local idx="$1"
+    local py="/data/data/com.termux/files/usr/bin/python3.14"
+    local fzfbin="/data/data/com.termux/files/usr/bin/fzf"
+    while true; do
+        picked=$(run_engine dino_fields "$WORK_JSON" "$idx" | "$fzfbin" \
+            --ansi --border --height=80% --layout=reverse \
+            --delimiter='|' --with-nth=2.. \
+            --preview="\"$py\" \"$ENGINE\" dino_preview \"$WORK_JSON\" $idx" \
+            --preview-window=right:55%:wrap \
+            --header='Enter = upravit pole • Esc = zpět na seznam dinosaurů' \
+            --prompt="Pole > ")
+        [ -z "$picked" ] && return
+        key=$(echo "$picked" | cut -d'|' -f1)
+        label=$(echo "$picked" | cut -d'|' -f2- | sed 's/ =.*//')
+        if [ "$key" = "special" ]; then
+            read -rp "Unicorn (barevný)? (a/n): " v
+            val=$([ "$v" = "a" ] && echo 1 || echo 0)
+        else
+            read -rp "Nová hodnota pro $label: " val
+        fi
+        run_engine dino_set_field "$WORK_JSON" "$idx" "$key" "$val"
+        mark_dirty
+    done
+}
 
-with open(path, encoding="utf-8") as f:
-    data=json.load(f)
-
-i=0
-
-for cage_id,cage in data.get("_Cages",{}).items():
-    for dino in cage.get("_Dinos",[]):
-
-        dtype="UNICORN" if dino.get("_Special") else "NORMAL"
-
-        print(
-            f"{i:04d} | "
-            f"{cage_id:<12} | "
-            f"{str(dino.get('_ID','')):<18} | "
-            f"lvl={dino.get('_Level',0):<2} | "
-            f"{dtype:<7} | "
-            f"{dino.get('_GUID','')}"
-        )
-
-        i+=1
-PY
-
-    /data/data/com.termux/files/usr/bin/fzf \
-        --ansi \
-        --border \
-        --height=70% \
-        --prompt="Dinosaurus > " |
-        cut -d' ' -f1
+bulk_dino_menu() {
+    local fzfbin="/data/data/com.termux/files/usr/bin/fzf"
+    local opts="setalllevel|Nastavit level VŠECH dinů (bezpečné max 6)
+setallspecial|Nastavit unicorn (_Special) u VŠECH dinů
+fillbones|Doplnit kosti na max ve všech schránkách (okamžitá rekonstrukce)"
+    picked=$(printf '%s\n' "$opts" | "$fzfbin" \
+        --ansi --border --height=40% --layout=reverse \
+        --delimiter='|' --with-nth=2.. \
+        --header='Hromadné akce • Esc = zpět' --prompt="Akce > ")
+    [ -z "$picked" ] && return
+    key=$(echo "$picked" | cut -d'|' -f1)
+    case "$key" in
+        setalllevel)
+            read -rp "Level pro všechny (bezpečné max = 6): " lvl
+            run_engine dino_set_all_level "$WORK_JSON" "$lvl"
+            mark_dirty; pause ;;
+        setallspecial)
+            read -rp "Unicorn pro všechny? (1=ano/0=ne): " v
+            run_engine dino_set_all_special "$WORK_JSON" "$v"
+            mark_dirty; pause ;;
+        fillbones)
+            run_engine fill_bones "$WORK_JSON"
+            mark_dirty; pause ;;
+    esac
 }
 
 menu_dinos() {
     while true; do
         clear
         header "$SEC_DINOS" "DINOSAUŘI"
-        run_engine list_dinos "$WORK_JSON"
-        echo
-        echo -e "${SEC_DINOS}1)${C_RESET} Nastavit level jednoho dina (index)"
-        echo -e "${SEC_DINOS}2)${C_RESET} Nastavit level VŠECH dinů najednou"
-        echo -e "${SEC_DINOS}3)${C_RESET} Přepnout 'unicorn' (_Special) u jednoho dina"
-        echo -e "${SEC_DINOS}4)${C_RESET} Nastavit 'unicorn' (_Special) u VŠECH dinů"
-        echo -e "${SEC_DINOS}5)${C_RESET} Nastavit boost staty (power/hp/speed/defense) jednoho dina"
-        echo -e "${SEC_DINOS}6)${C_RESET} Doplnit kosti na max ve všech schránkách (okamžitá rekonstrukce)"
-        echo "b) Zpět"
-        read -rp "Volba: " c
-        case "$c" in
-            1)
-                read -rp "Index dina: " idx
-                read -rp "Nový level (bezpečné max = 6): " lvl
-                run_engine dino_set_level "$WORK_JSON" "$idx" "$lvl"
-                mark_dirty; pause ;;
-            2)
-                read -rp "Level pro všechny (bezpečné max = 6): " lvl
-                run_engine dino_set_all_level "$WORK_JSON" "$lvl"
-                mark_dirty; pause ;;
-            3)
-                read -rp "Index dina: " idx
-                read -rp "Unicorn? (1=ano/0=ne): " v
-                run_engine dino_set_special "$WORK_JSON" "$idx" "$v"
-                mark_dirty; pause ;;
-            4)
-                read -rp "Unicorn pro všechny? (1=ano/0=ne): " v
-                run_engine dino_set_all_special "$WORK_JSON" "$v"
-                mark_dirty; pause ;;
-            5)
-                read -rp "Index dina: " idx
-                read -rp "BoostPower: " p
-                read -rp "BoostHP: " h
-                read -rp "BoostSpeed: " s
-                read -rp "BoostDefense: " df
-                run_engine dino_set_boost "$WORK_JSON" "$idx" "$p" "$h" "$s" "$df"
-                mark_dirty; pause ;;
-            6)
-                run_engine fill_bones "$WORK_JSON"
-                mark_dirty; pause ;;
-            b|B) return ;;
-        esac
+        sel=$(select_dino_fzf)
+        [ -z "$sel" ] && return
+        if [ "$sel" = "BULK" ]; then
+            bulk_dino_menu
+        else
+            edit_dino_fzf "$sel"
+        fi
     done
 }
 
