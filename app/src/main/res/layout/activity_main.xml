@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <EditText
+            android:id="@+id/editPath"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Cesta k save souboru"
+            android:text="/data/user/0/pl.idreams.Dino/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml" />
+
+        <Button
+            android:id="@+id/btnLoad"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Načíst save" />
+
+        <Button
+            android:id="@+id/btnSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Přehled" />
+
+        <Button
+            android:id="@+id/btnCurrency"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Měna a zdroje" />
+
+        <Button
+            android:id="@+id/btnDinos"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Dinosauři" />
+
+        <Button
+            android:id="@+id/btnUnlocks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Odemčené funkce" />
+
+        <Button
+            android:id="@+id/btnLevels"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Úrovně banky/pokladny" />
+
+        <Button
+            android:id="@+id/btnArena"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Aréna" />
+
+        <Button
+            android:id="@+id/btnBones"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Doplnit kosti na maximum" />
+
+        <Button
+            android:id="@+id/btnSave"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Uložit a spustit hru" />
+
+        <TextView
+            android:id="@+id/txtLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true"
+            android:text="" />
+
+    </LinearLayout>
+</ScrollView>

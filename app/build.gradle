@@ -1,0 +1,40 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'cz.valleyman.dinoparkeditor'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'cz.valleyman.dinoparkeditor'
+        minSdk 24
+        targetSdk 34
+        versionCode 2
+        versionName '1.1'
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+            shrinkResources false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+    }
+}
+
+dependencies {
+    // No external runtime dependencies are required.
+}
