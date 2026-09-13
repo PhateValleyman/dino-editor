@@ -10,6 +10,9 @@ import android.widget.TextView;
 
 import org.json.JSONObject;
 
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public class MainActivity extends Activity {
 
     private static final String PKG = "pl.idreams.Dino";
@@ -21,6 +24,8 @@ public class MainActivity extends Activity {
 
     private String currentXml;
     private JSONObject currentData;
+    private String currentPath;
+    private final AtomicBoolean operationRunning = new AtomicBoolean(false);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,7 +44,7 @@ public class MainActivity extends Activity {
         findViewById(R.id.btnLevels).setOnClickListener(v -> menuLevels());
         findViewById(R.id.btnArena).setOnClickListener(v -> menuArena());
         findViewById(R.id.btnBones).setOnClickListener(v -> {
-            if (!requireLoaded()) return;
+            if (!requireLoaded() || operationRunning.get()) return;
             try {
                 log(DinoEngine.fillBones(currentData));
             } catch (Exception e) {
@@ -50,24 +55,39 @@ public class MainActivity extends Activity {
     }
 
     private void log(String msg) {
-        txtLog.setText(msg);
+        txtLog.setText(msg == null ? "" : msg);
     }
 
     private boolean requireLoaded() {
-        if (currentData == null) {
+        if (currentData == null || currentXml == null || currentPath == null) {
             log("Nejdřív načti save (tlačítko 'Načíst save').");
             return false;
         }
         return true;
     }
 
+    private boolean beginOperation(String message) {
+        if (!operationRunning.compareAndSet(false, true)) {
+            log("Počkej na dokončení předchozí operace.");
+            return false;
+        }
+        log(message);
+        return true;
+    }
+
+    private void endOperation() {
+        operationRunning.set(false);
+    }
+
     private void loadSave() {
+        if (!beginOperation("Načítám...")) return;
+
         String requestedPath = editPath.getText().toString().trim();
         if (requestedPath.isEmpty() || requestedPath.indexOf('\n') >= 0 || requestedPath.indexOf('\r') >= 0) {
             requestedPath = DEFAULT_PATH;
         }
         final String initialPath = requestedPath;
-        log("Načítám...");
+
         new Thread(() -> {
             try {
                 RootShell.forceStopApp(PKG);
@@ -77,23 +97,25 @@ public class MainActivity extends Activity {
                 if (detected != null && initialPath.equals(DEFAULT_PATH)) {
                     path = detected;
                 } else if (!RootShell.fileExists(path)) {
-                    throw new java.io.IOException(
-                            "PlayerPrefs se save polem nebyl nalezen. Očekáváno: " + DEFAULT_PATH);
-                }
-                if (!path.equals(initialPath)) {
-                    final String detectedPath = path;
-                    runOnUiThread(() -> editPath.setText(detectedPath));
+                    throw new IOException("PlayerPrefs se save polem nebyl nalezen: " + path);
                 }
 
                 String xml = RootShell.readFile(path);
                 JSONObject data = DinoEngine.decode(xml);
+
+                final String loadedPath = path;
                 currentXml = xml;
                 currentData = data;
-                final String loadedPath = path;
-                runOnUiThread(() -> log("Save načten.\nSoubor: " + loadedPath + "\n\n" + safeSummary()));
+                currentPath = path;
+                runOnUiThread(() -> {
+                    editPath.setText(loadedPath);
+                    log("Save načten.\nSoubor: " + loadedPath + "\n\n" + safeSummary());
+                });
             } catch (Exception e) {
                 final String msg = e.getMessage();
                 runOnUiThread(() -> log("CHYBA při načítání: " + msg));
+            } finally {
+                runOnUiThread(this::endOperation);
             }
         }).start();
     }
@@ -116,48 +138,48 @@ public class MainActivity extends Activity {
     }
 
     private void saveAndLaunch() {
-        if (!requireLoaded()) return;
-        final String path = editPath.getText().toString().trim();
-        if (path.isEmpty() || path.indexOf('\n') >= 0 || path.indexOf('\r') >= 0) {
-            log("CHYBA: zadej platnou cestu k save souboru.");
-            return;
-        }
+        if (!requireLoaded() || !beginOperation("Ukládám...")) return;
 
-        // Snapshot the in-memory state on the UI thread before starting the background write.
+        // Use the path that was actually loaded, not a path changed in the text field afterwards.
+        final String path = currentPath;
         final String xmlSnapshot = currentXml;
         final JSONObject dataSnapshot;
         try {
             dataSnapshot = new JSONObject(currentData.toString());
         } catch (Exception e) {
+            endOperation();
             log("CHYBA: nelze vytvořit snapshot save: " + e.getMessage());
             return;
         }
 
-        log("Ukládám...");
         new Thread(() -> {
             try {
                 RootShell.forceStopApp(PKG);
 
-                String quotedPath = quote(path);
+                String backupPath = path + ".bak.$(date +%Y%m%d_%H%M%S)";
                 RootShell.Result backup = RootShell.run(
-                        "backup=" + quote(path) + ".bak.$(date +%Y%m%d_%H%M%S)" +
-                                "; cp " + quotedPath + " \"$backup\"");
+                        "backup=" + quote(backupPath) +
+                                "; cp " + quote(path) + " \"$backup\" && test -s \"$backup\"");
                 if (backup.exitCode != 0) {
-                    throw new java.io.IOException("Záloha selhala: " + backup.stderr.trim());
+                    throw new IOException("Záloha selhala: " + backup.stderr.trim());
                 }
 
                 String newXml = DinoEngine.encode(xmlSnapshot, dataSnapshot);
                 RootShell.writeFile(path, newXml);
+
+                // Verify the file can be read and decoded before launching the game.
+                String verifyXml = RootShell.readFile(path);
+                DinoEngine.decode(verifyXml);
+
                 currentXml = newXml;
                 currentData = dataSnapshot;
-                RootShell.Result launch = RootShell.run("am start -n " + quote(ACTIVITY));
-                if (launch.exitCode != 0) {
-                    throw new java.io.IOException("Spuštění hry selhalo: " + launch.stderr.trim());
-                }
-                runOnUiThread(() -> log("Uloženo a hra spuštěna."));
+                RootShell.launchApp(ACTIVITY);
+                runOnUiThread(() -> log("Uloženo a ověřeno. Záloha: " + backupPath + "\nHra spuštěna."));
             } catch (Exception e) {
                 final String msg = e.getMessage();
                 runOnUiThread(() -> log("CHYBA při ukládání: " + msg));
+            } finally {
+                runOnUiThread(this::endOperation);
             }
         }).start();
     }
@@ -187,8 +209,7 @@ public class MainActivity extends Activity {
         }
         new AlertDialog.Builder(this)
                 .setTitle("Měna a zdroje")
-                .setItems(labels, (dialog, which) ->
-                        promptCurrencyValue(CURRENCY_FIELDS[which][0], CURRENCY_FIELDS[which][1]))
+                .setItems(labels, (dialog, which) -> promptCurrencyValue(CURRENCY_FIELDS[which][0], CURRENCY_FIELDS[which][1]))
                 .setNegativeButton("Zpět", null)
                 .show();
     }
@@ -220,7 +241,6 @@ public class MainActivity extends Activity {
                 log(list);
                 return;
             }
-
             String[] lines = list.split("\n");
             new AlertDialog.Builder(this)
                     .setTitle("🦕 Dinosauři")
@@ -235,17 +255,21 @@ public class MainActivity extends Activity {
     private void menuCages() {
         if (!requireLoaded()) return;
         try {
-            final String[] cages = DinoEngine.listCages(currentData).split("\n");
-            if (cages.length == 0 || cages[0].isEmpty()) {
+            final String list = DinoEngine.listCages(currentData);
+            if (list.isEmpty()) {
                 log("Žádné klece.");
                 return;
             }
+            final String[] cages = list.split("\n");
             new AlertDialog.Builder(this)
                     .setTitle("Úrovně klecí")
                     .setItems(cages, (dialog, which) -> {
                         String[] parts = cages[which].split("\\|", 3);
-                        String cageId = parts[0].trim();
-                        promptCageLevel(cageId, parts[2].trim(), parts[1].trim());
+                        if (parts.length < 3) {
+                            log("CHYBA: neplatný záznam klece.");
+                            return;
+                        }
+                        promptCageLevel(parts[0].trim(), parts[2].trim(), parts[1].trim());
                     })
                     .setNegativeButton("Zpět", null)
                     .show();
@@ -287,7 +311,7 @@ public class MainActivity extends Activity {
 
     private void promptDinoLevel(final int idx) {
         final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER;
         new AlertDialog.Builder(this)
                 .setTitle("Nový level (max 6)")
                 .setView(input)
