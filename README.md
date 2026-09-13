@@ -1,6 +1,7 @@
-# Dino Park Editor 1.2
+# Dino Editor 1.3
 
 Root Android editor for the `pl.idreams.Dino` PlayerPrefs save.
+The editor application ID is `cz.umbrellacorp.dinoeditor`.
 
 ## What was fixed/improved
 
@@ -12,6 +13,7 @@ Root Android editor for the `pl.idreams.Dino` PlayerPrefs save.
 - Hardened root command execution by draining stdout/stderr concurrently.
 - Added input path validation.
 - Finds the save through `dumpsys package` and the app's actual `dataDir`, not only through a fixed filename.
+- Uses a clearer dinosaur list with icons, level, cage, ID and unicorn status.
 - Added a save snapshot so UI edits cannot race the background save operation.
 - Backup creation is now checked instead of silently ignored.
 - Launching the game is now checked for failure.

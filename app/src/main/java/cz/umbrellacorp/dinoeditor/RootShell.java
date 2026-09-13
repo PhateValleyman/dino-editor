@@ -1,4 +1,4 @@
-package cz.valleyman.dinoparkeditor;
+package cz.umbrellacorp.dinoeditor;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

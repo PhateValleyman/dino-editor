@@ -1,4 +1,4 @@
-package cz.valleyman.dinoparkeditor;
+package cz.umbrellacorp.dinoeditor;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -223,7 +223,7 @@ public class MainActivity extends Activity {
 
             String[] lines = list.split("\n");
             new AlertDialog.Builder(this)
-                    .setTitle("Dinosauři")
+                    .setTitle("🦕 Dinosauři")
                     .setItems(lines, (dialog, which) -> editDino(which))
                     .setNegativeButton("Zpět", null)
                     .show();

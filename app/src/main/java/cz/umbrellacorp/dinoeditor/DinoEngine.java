@@ -1,4 +1,4 @@
-package cz.valleyman.dinoparkeditor;
+package cz.umbrellacorp.dinoeditor;
 
 import android.util.Base64;
 
@@ -121,12 +121,14 @@ public class DinoEngine {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < dinos.size(); i++) {
             JSONObject dn = dinos.get(i).dino;
-            String special = dn.optBoolean("_Special", false) ? "UNICORN" : "normal";
-            sb.append(i).append(" | klec=").append(dinos.get(i).cageId)
-                    .append(" id=").append(dn.opt("_ID"))
-                    .append(" level=").append(dn.opt("_Level"))
-                    .append(" [").append(special).append("]")
-                    .append(" guid=").append(dn.opt("_GUID")).append('\n');
+            boolean special = dn.optBoolean("_Special", false);
+            sb.append(special ? "🦄 " : "🦕 ")
+                    .append("#").append(i + 1)
+                    .append("  •  ").append(dn.opt("_ID"))
+                    .append("  •  Level ").append(dn.opt("_Level"))
+                    .append("  •  Klec ").append(dinos.get(i).cageId)
+                    .append(special ? "  •  UNICORN" : "")
+                    .append('\n');
         }
 
         return sb.toString().trim();
