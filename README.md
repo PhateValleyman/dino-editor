@@ -20,6 +20,17 @@ Root Android editor for the `pl.idreams.Dino` PlayerPrefs save.
 
 Use JDK 17 for the Gradle build. The project uses Android Gradle Plugin 8.5.2 with Gradle 8.7.
 
+Pokud `java -version` skončí chybou `UnsatisfiedLinkError` nebo `initInetAddressIDs`,
+je instalace JDK v Termuxu poškozená či smíchaná z různých verzí. Oprav ji před
+buildem:
+
+```bash
+pkg update
+pkg reinstall openjdk-17
+```
+
+Skript nejdříve ověří `JAVA_HOME`, potom automaticky zkusí JDK 17 a JDK 21.
+
 ```bash
 # Select Java 17 for Android/Gradle tooling.
 export JAVA_HOME="$PREFIX/lib/jvm/java-17-openjdk"
