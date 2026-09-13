@@ -1,22 +1,30 @@
 #!/data/data/com.termux/files/usr/bin/bash
 set -euo pipefail
 
-# Select a working Termux JDK for Android Gradle Plugin 8.5.2.
+# Select JDK 17, which is the supported runtime for this Android Gradle Plugin version.
 if [ -n "${JAVA_HOME:-}" ]; then
-	if ! "$JAVA_HOME/bin/java" -version >/dev/null 2>&1; then
+	if [ ! -x "$JAVA_HOME/bin/java" ]; then
 		printf 'JAVA_HOME není funkční: %s\n' "$JAVA_HOME" >&2
 		exit 1
 	fi
-elif [ -x "$PREFIX/lib/jvm/java-17-openjdk/bin/java" ] &&
-		"$PREFIX/lib/jvm/java-17-openjdk/bin/java" -version >/dev/null 2>&1; then
-	export JAVA_HOME="$PREFIX/lib/jvm/java-17-openjdk"
-elif [ -x "$PREFIX/lib/jvm/java-21-openjdk/bin/java" ] &&
-		"$PREFIX/lib/jvm/java-21-openjdk/bin/java" -version >/dev/null 2>&1; then
-	export JAVA_HOME="$PREFIX/lib/jvm/java-21-openjdk"
+	JAVA_VERSION=$("$JAVA_HOME/bin/java" -version 2>&1 | sed -n 's/.*version "\([0-9]*\).*/\1/p' | head -n 1)
+	if [ "$JAVA_VERSION" != "17" ]; then
+		printf 'Tento projekt vyžaduje JDK 17, ale JAVA_HOME ukazuje na JDK %s.\n' "${JAVA_VERSION:-neznámé}" >&2
+		exit 1
+	fi
 else
-	printf '%s\n' 'Funkční Termux JDK nebylo nalezeno. Spusť: pkg reinstall openjdk-17' >&2
-	exit 1
+	if [ ! -x "$PREFIX/lib/jvm/java-17-openjdk/bin/java" ]; then
+		printf '%s\n' 'JDK 17 nebylo nalezeno. Spusť: pkg reinstall openjdk-17' >&2
+		exit 1
+	fi
+	export JAVA_HOME="$PREFIX/lib/jvm/java-17-openjdk"
 fi
+
+# Export the selected JDK bin directory so Gradle and Java tools use the same runtime.
+export PATH="$JAVA_HOME/bin:$PATH"
+
+# Print the selected Java version before starting the build.
+java -version
 
 # Build the debug APK with the pinned Gradle wrapper.
 ./gradlew assembleDebug
