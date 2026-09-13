@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
         findViewById(R.id.btnLevels).setOnClickListener(v -> menuLevels());
         findViewById(R.id.btnArena).setOnClickListener(v -> menuArena());
         findViewById(R.id.btnBones).setOnClickListener(v -> {
-            if (!requireLoaded() || operationRunning.get()) return;
+            if (!requireLoaded()) return;
             try {
                 log(DinoEngine.fillBones(currentData));
             } catch (Exception e) {
@@ -59,6 +59,10 @@ public class MainActivity extends Activity {
     }
 
     private boolean requireLoaded() {
+        if (operationRunning.get()) {
+            log("Počkej na dokončení probíhající operace.");
+            return false;
+        }
         if (currentData == null || currentXml == null || currentPath == null) {
             log("Nejdřív načti save (tlačítko 'Načíst save').");
             return false;
@@ -156,9 +160,10 @@ public class MainActivity extends Activity {
             try {
                 RootShell.forceStopApp(PKG);
 
-                String backupPath = path + ".bak.$(date +%Y%m%d_%H%M%S)";
+                // Keep the save path shell-quoted while leaving the timestamp command substitution active.
+                String backupPath = quote(path) + ".bak.$(date +%Y%m%d_%H%M%S)";
                 RootShell.Result backup = RootShell.run(
-                        "backup=" + quote(backupPath) +
+                        "backup=" + backupPath +
                                 "; cp " + quote(path) + " \"$backup\" && test -s \"$backup\"");
                 if (backup.exitCode != 0) {
                     throw new IOException("Záloha selhala: " + backup.stderr.trim());
@@ -174,7 +179,7 @@ public class MainActivity extends Activity {
                 currentXml = newXml;
                 currentData = dataSnapshot;
                 RootShell.launchApp(ACTIVITY);
-                runOnUiThread(() -> log("Uloženo a ověřeno. Záloha: " + backupPath + "\nHra spuštěna."));
+                runOnUiThread(() -> log("Uloženo a ověřeno.\nZáloha vytvořena.\nHra spuštěna."));
             } catch (Exception e) {
                 final String msg = e.getMessage();
                 runOnUiThread(() -> log("CHYBA při ukládání: " + msg));
