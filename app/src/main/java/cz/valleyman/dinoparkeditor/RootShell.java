@@ -144,6 +144,9 @@ public class RootShell {
     }
 
     public static void launchApp(String pkgAndActivity) {
-        run("am start -n " + pkgAndActivity);
+        Result result = run("am start -n " + quote(pkgAndActivity));
+        if (result.exitCode != 0) {
+            throw new IllegalStateException("Spuštění aplikace selhalo: " + result.stderr.trim());
+        }
     }
 }

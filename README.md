@@ -5,7 +5,7 @@ Root Android editor for the `pl.idreams.Dino` PlayerPrefs save.
 ## What was fixed/improved
 
 - Split the original concatenated source dump into a valid Gradle project.
-- Modernized the Gradle configuration to AGP 8.6.1.
+- Uses Android Gradle Plugin 8.5.2 with Gradle 8.7.
 - Kept the app dependency-free at runtime.
 - Kept Java 8 bytecode compatibility.
 - Added dark/system theme resources.
@@ -18,7 +18,7 @@ Root Android editor for the `pl.idreams.Dino` PlayerPrefs save.
 
 ## Build in Termux
 
-Use JDK 17 for the Gradle build. AGP 8.6.1 is intended for Gradle 8.7.
+Use JDK 17 for the Gradle build. The project uses Android Gradle Plugin 8.5.2 with Gradle 8.7.
 
 ```bash
 # Select Java 17 for Android/Gradle tooling.
@@ -28,7 +28,7 @@ export JAVA_HOME="$PREFIX/lib/jvm/java-17-openjdk"
 java -version
 
 # Build the debug APK.
-gradle --offline assembleDebug
+./gradlew --offline assembleDebug
 ```
 
 If the required Android Gradle Plugin is not cached, remove `--offline` on the first build.
@@ -41,11 +41,8 @@ The APK is created at:
 
 The editor uses `su` and therefore requires a rooted Android device with Magisk/root access.
 
-The default save path is:
-
-`/data/user/0/pl.idreams.Dino/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml`
-
-The loader also automatically falls back to `/data/data/...` and scans both locations for an XML PlayerPrefs file containing the `<string name="save">` field. This makes the editor work across Android versions where `/data/data` is only a compatibility path.
+The default save path is `/data/data/pl.idreams.Dino/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml`.
+The loader also scans `/data/user/0/...` and both locations for an XML PlayerPrefs file containing the `<string name="save">` field.
 
 The game is force-stopped before reading/writing the save.
 

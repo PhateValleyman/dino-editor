@@ -128,13 +128,42 @@ public class DinoEngine {
                     .append(" [").append(special).append("]")
                     .append(" guid=").append(dn.opt("_GUID")).append('\n');
         }
+
         return sb.toString().trim();
+    }
+
+    public static String listCages(JSONObject data) throws JSONException {
+        JSONObject cages = data.optJSONObject("_Cages");
+        if (cages == null) return "";
+        StringBuilder sb = new StringBuilder();
+        Iterator<String> it = cages.keys();
+        while (it.hasNext()) {
+            String cageId = it.next();
+            JSONObject cage = cages.getJSONObject(cageId);
+            if (sb.length() > 0) sb.append('\n');
+            sb.append(cageId).append(" | ").append(cage.optInt("_CurrentLevel", 0));
+        }
+        return sb.toString();
+    }
+
+    public static String setCageLevel(JSONObject data, String cageId, String levelStr) throws JSONException {
+        JSONObject cages = data.optJSONObject("_Cages");
+        if (cages == null || !cages.has(cageId)) return "CHYBA: klec neexistuje.";
+        final int level;
+        try {
+            level = Integer.parseInt(levelStr.trim());
+        } catch (NumberFormatException e) {
+            return "CHYBA: úroveň musí být celé číslo.";
+        }
+        JSONObject cage = cages.getJSONObject(cageId);
+        Object old = cage.opt("_CurrentLevel");
+        cage.put("_CurrentLevel", level);
+        return "OK  klec " + cageId + ": " + old + " -> " + level;
     }
 
     // ---- currency ---------------------------------------------------------
 
     public static String setCurrency(JSONObject d, String field, String value) throws JSONException {
-        if (!d.has(field)) return "CHYBA: pole '" + field + "' neexistuje.";
         int n;
         try {
             n = Integer.parseInt(value.trim());

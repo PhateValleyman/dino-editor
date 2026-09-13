@@ -14,7 +14,7 @@ public class MainActivity extends Activity {
 
     private static final String PKG = "pl.idreams.Dino";
     private static final String ACTIVITY = PKG + "/com.unity3d.player.UnityPlayerActivity";
-    private static final String DEFAULT_PATH = "/data/user/0/" + PKG + "/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml";
+    private static final String DEFAULT_PATH = "/data/data/" + PKG + "/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml";
 
     private EditText editPath;
     private TextView txtLog;
@@ -34,6 +34,7 @@ public class MainActivity extends Activity {
         findViewById(R.id.btnSummary).setOnClickListener(v -> showSummary());
         findViewById(R.id.btnCurrency).setOnClickListener(v -> menuCurrency());
         findViewById(R.id.btnDinos).setOnClickListener(v -> menuDinos());
+        findViewById(R.id.btnCages).setOnClickListener(v -> menuCages());
         findViewById(R.id.btnUnlocks).setOnClickListener(v -> menuUnlocks());
         findViewById(R.id.btnLevels).setOnClickListener(v -> menuLevels());
         findViewById(R.id.btnArena).setOnClickListener(v -> menuArena());
@@ -137,10 +138,9 @@ public class MainActivity extends Activity {
                 RootShell.forceStopApp(PKG);
 
                 String quotedPath = quote(path);
-                String backupPathPrefix = path + ".bak.";
                 RootShell.Result backup = RootShell.run(
-                        "cp " + quotedPath + " " + quote(backupPathPrefix) +
-                                "$(date +%Y%m%d_%H%M%S)");
+                        "backup=" + quote(path) + ".bak.$(date +%Y%m%d_%H%M%S)" +
+                                "; cp " + quotedPath + " \"$backup\"");
                 if (backup.exitCode != 0) {
                     throw new java.io.IOException("Záloha selhala: " + backup.stderr.trim());
                 }
@@ -166,11 +166,14 @@ public class MainActivity extends Activity {
     private static final String[][] CURRENCY_FIELDS = {
             {"Mince", "_CoinsNo"},
             {"Bankovky", "_BillsNo"},
-            {"Prasátko", "_PiggyBank"},
-            {"Nasbírané mince do prasátka", "_PiggyBankCollectedCoins"},
             {"Kameny", "_StonesNo"},
             {"Lajky", "_LikesNo"},
             {"XP", "_XPNum"},
+            {"Dynamity I", "_MultiDigToolsNo"},
+            {"Dynamity II", "_MultiDig2ToolsNo"},
+            {"Zlaté krumpáče", "_NumGoldenPickaxe"},
+            {"Gemy I", "_MultiDigGemsNo"},
+            {"Gemy II", "_MultiDig2GemsNo"},
             {"Vejce v inkubátoru", "_IncubatedEggsNo"},
     };
 
@@ -216,6 +219,7 @@ public class MainActivity extends Activity {
                 log(list);
                 return;
             }
+
             String[] lines = list.split("\n");
             new AlertDialog.Builder(this)
                     .setTitle("Dinosauři")
@@ -225,6 +229,46 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             log("CHYBA: " + e.getMessage());
         }
+    }
+
+    private void menuCages() {
+        if (!requireLoaded()) return;
+        try {
+            final String[] cages = DinoEngine.listCages(currentData).split("\n");
+            if (cages.length == 0 || cages[0].isEmpty()) {
+                log("Žádné klece.");
+                return;
+            }
+            new AlertDialog.Builder(this)
+                    .setTitle("Úrovně klecí")
+                    .setItems(cages, (dialog, which) -> {
+                        String[] parts = cages[which].split("\\|", 2);
+                        String cageId = parts[0].trim();
+                        promptCageLevel(cageId, parts[1].trim());
+                    })
+                    .setNegativeButton("Zpět", null)
+                    .show();
+        } catch (Exception e) {
+            log("CHYBA: " + e.getMessage());
+        }
+    }
+
+    private void promptCageLevel(final String cageId, String currentLevel) {
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        input.setText(currentLevel);
+        new AlertDialog.Builder(this)
+                .setTitle("Nová úroveň klece " + cageId)
+                .setView(input)
+                .setPositiveButton("OK", (d, w) -> {
+                    try {
+                        log(DinoEngine.setCageLevel(currentData, cageId, input.getText().toString()));
+                    } catch (Exception e) {
+                        log("CHYBA: " + e.getMessage());
+                    }
+                })
+                .setNegativeButton("Zrušit", null)
+                .show();
     }
 
     private void editDino(final int idx) {
