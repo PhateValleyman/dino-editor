@@ -73,13 +73,14 @@ public class MainActivity extends Activity {
                 RootShell.forceStopApp(PKG);
 
                 String path = initialPath;
-                if (!RootShell.fileExists(path)) {
-                    String detected = RootShell.findPlayerPrefs(PKG);
-                    if (detected == null) {
-                        throw new java.io.IOException(
-                                "PlayerPrefs se save polem nebyl nalezen. Očekáváno: " + DEFAULT_PATH);
-                    }
+                String detected = RootShell.findPlayerPrefs(PKG);
+                if (detected != null && initialPath.equals(DEFAULT_PATH)) {
                     path = detected;
+                } else if (!RootShell.fileExists(path)) {
+                    throw new java.io.IOException(
+                            "PlayerPrefs se save polem nebyl nalezen. Očekáváno: " + DEFAULT_PATH);
+                }
+                if (!path.equals(initialPath)) {
                     final String detectedPath = path;
                     runOnUiThread(() -> editPath.setText(detectedPath));
                 }

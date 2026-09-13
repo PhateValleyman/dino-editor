@@ -87,17 +87,23 @@ public class RootShell {
 
     /**
      * Finds a Dino Park PlayerPrefs XML containing the actual save field.
-     * Android commonly exposes app-private data through /data/user/0, while
-     * /data/data may be a compatibility symlink on some devices.
+     * The package dump supplies the real dataDir, which also covers devices
+     * using a user-specific Android profile or a renamed shared_prefs file.
      */
     public static String findPlayerPrefs(String pkg) {
         String command =
-                "for base in /data/user/0/" + pkg + "/shared_prefs /data/data/" + pkg + "/shared_prefs; do " +
-                "[ -d $base ] || continue; " +
-                "for f in $base/*playerprefs*.xml $base/*.xml; do " +
-                "[ -f $f ] || continue; " +
-                "grep -q '<string name=\"save\">' $f 2>/dev/null && printf '%s\n' $f && exit 0; " +
-                "done; done; exit 1";
+                "data_dir=$(dumpsys package " + quote(pkg) +
+                " 2>/dev/null | sed -n 's/^[[:space:]]*dataDir=//p' | head -n 1); " +
+                "for base in \"$data_dir/shared_prefs\" " +
+                "/data/user/0/" + pkg + "/shared_prefs " +
+                "/data/data/" + pkg + "/shared_prefs; do " +
+                "[ -d \"$base\" ] || continue; " +
+                "for f in \"$base\"/*.xml; do " +
+                "[ -f \"$f\" ] || continue; " +
+                "grep -q '<string name=\"save\">' \"$f\" 2>/dev/null && " +
+                "printf '%s\\n' \"$f\" && exit 0; " +
+                "done; " +
+                "done; exit 1";
         Result r = run(command);
         if (r.exitCode != 0) return null;
         String[] lines = r.stdout.trim().split("\\r?\\n");

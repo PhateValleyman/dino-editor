@@ -11,6 +11,7 @@ Root Android editor for the `pl.idreams.Dino` PlayerPrefs save.
 - Added dark/system theme resources.
 - Hardened root command execution by draining stdout/stderr concurrently.
 - Added input path validation.
+- Finds the save through `dumpsys package` and the app's actual `dataDir`, not only through a fixed filename.
 - Added a save snapshot so UI edits cannot race the background save operation.
 - Backup creation is now checked instead of silently ignored.
 - Launching the game is now checked for failure.
@@ -53,7 +54,10 @@ The APK is created at:
 The editor uses `su` and therefore requires a rooted Android device with Magisk/root access.
 
 The default save path is `/data/data/pl.idreams.Dino/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml`.
-The loader also scans `/data/user/0/...` and both locations for an XML PlayerPrefs file containing the `<string name="save">` field.
+The loader first runs `dumpsys package pl.idreams.Dino` as root, obtains the actual
+`dataDir`, and searches its `shared_prefs` directory for any XML containing
+`<string name="save">`. It then falls back to `/data/user/0/...` and `/data/data/...`.
+No `aapt2` binary is required or bundled; `dumpsys` is part of Android.
 
 The game is force-stopped before reading/writing the save.
 
