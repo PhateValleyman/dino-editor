@@ -6,12 +6,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
-/**
- * Spouští příkazy jako "su -c '<command>'" - stejný mechanismus, jaký
- * jsme používali ručně v Termuxu (žádné nové oprávnění navíc; app se musí
- * nechat schválit v Magisku při prvním spuštění).
- */
-public class RootShell {
+/** Root shell helpers used by the editor. */
+public final class RootShell {
+
+    private RootShell() {
+    }
 
     public static class Result {
         public final int exitCode;
@@ -23,16 +22,6 @@ public class RootShell {
             this.stdout = stdout;
             this.stderr = stderr;
         }
-    }
-
-    private static byte[] readAll(InputStream in) throws IOException {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int n;
-        while ((n = in.read(buf)) != -1) {
-            bos.write(buf, 0, n);
-        }
-        return bos.toByteArray();
     }
 
     private static Thread drainAsync(final InputStream in, final ByteArrayOutputStream sink) {
@@ -78,36 +67,34 @@ public class RootShell {
         }
     }
 
-
     /** Checks whether a root-visible regular file exists. */
     public static boolean fileExists(String path) {
-        Result r = run("test -f " + quote(path));
-        return r.exitCode == 0;
+        return run("test -f " + quote(path)).exitCode == 0;
     }
 
     /**
      * Finds a Dino Park PlayerPrefs XML containing the actual save field.
-     * The package dump supplies the real dataDir, which also covers devices
-     * using a user-specific Android profile or a renamed shared_prefs file.
+     * The package dump supplies the real dataDir, which also covers Android
+     * installations using /data/user/0 or a different shared_prefs filename.
      */
     public static String findPlayerPrefs(String pkg) {
         String command =
                 "data_dir=$(dumpsys package " + quote(pkg) +
                 " 2>/dev/null | sed -n 's/^[[:space:]]*dataDir=//p' | head -n 1); " +
                 "for base in /data/user/0/" + pkg + "/shared_prefs " +
-                "\"$data_dir/shared_prefs\" " +
-                "/data/data/" + pkg + "/shared_prefs; do " +
+                "\"$data_dir/shared_prefs\" /data/data/" + pkg + "/shared_prefs; do " +
                 "[ -d \"$base\" ] || continue; " +
                 "for f in \"$base\"/*.xml; do " +
                 "[ -f \"$f\" ] || continue; " +
-                "grep -q '<string name=\"save\">' \"$f\" 2>/dev/null && " +
+                "grep -q '<string[[:space:]][^>]*name=\"save\"[^>]*>' \"$f\" 2>/dev/null && " +
                 "printf '%s\\n' \"$f\" && exit 0; " +
-                "done; " +
-                "done; exit 1";
+                "done; done; exit 1";
+
         Result r = run(command);
         if (r.exitCode != 0) return null;
-        String[] lines = r.stdout.trim().split("\\r?\\n");
-        return lines.length == 0 || lines[0].trim().isEmpty() ? null : lines[0].trim();
+        String output = r.stdout.trim();
+        if (output.isEmpty()) return null;
+        return output.split("\\r?\\n", 2)[0].trim();
     }
 
     public static String readFile(String path) throws IOException {
@@ -118,10 +105,18 @@ public class RootShell {
         return r.stdout;
     }
 
-    /** Writes the supplied UTF-8 content as root. */
+    /**
+     * Writes UTF-8 content through a temporary file in the same directory and
+     * renames it over the original. This prevents a failed/interrupted write
+     * from leaving a truncated PlayerPrefs file.
+     */
     public static void writeFile(String path, String content) throws IOException {
+        String tempPath = path + ".tmp." + Long.toHexString(System.nanoTime());
+        String command = "cat > " + quote(tempPath) + " && mv -f " +
+                quote(tempPath) + " " + quote(path);
+
         try {
-            Process p = new ProcessBuilder("su", "-c", "cat > " + quote(path)).start();
+            Process p = new ProcessBuilder("su", "-c", command).start();
             OutputStream os = p.getOutputStream();
             os.write(content.getBytes(StandardCharsets.UTF_8));
             os.flush();
@@ -142,11 +137,14 @@ public class RootShell {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IOException("Zápis přerušen.");
+        } finally {
+            // Remove the temporary file if the atomic rename did not happen.
+            run("rm -f " + quote(tempPath));
         }
     }
 
     public static void forceStopApp(String pkg) {
-        run("am force-stop " + pkg);
+        run("am force-stop " + quote(pkg));
     }
 
     public static void launchApp(String pkgAndActivity) {
