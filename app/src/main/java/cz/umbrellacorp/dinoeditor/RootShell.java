@@ -81,12 +81,12 @@ public final class RootShell {
         String command =
                 "data_dir=$(dumpsys package " + quote(pkg) +
                 " 2>/dev/null | sed -n 's/^[[:space:]]*dataDir=//p' | head -n 1); " +
-                "for base in /data/user/0/" + pkg + "/shared_prefs " +
-                "\"$data_dir/shared_prefs\" /data/data/" + pkg + "/shared_prefs; do " +
+                "for base in /data/user/0/" + quote(pkg) + "/shared_prefs " +
+                "\"$data_dir/shared_prefs\" /data/data/" + quote(pkg) + "/shared_prefs; do " +
                 "[ -d \"$base\" ] || continue; " +
                 "for f in \"$base\"/*.xml; do " +
                 "[ -f \"$f\" ] || continue; " +
-                "grep -q '<string[[:space:]][^>]*name=\"save\"[^>]*>' \"$f\" 2>/dev/null && " +
+                "grep -q 'name=\"save\"' \"$f\" 2>/dev/null && " +
                 "printf '%s\\n' \"$f\" && exit 0; " +
                 "done; done; exit 1";
 
