@@ -187,16 +187,10 @@ public class MainActivity extends Activity {
     // ---- měna a zdroje --------------------------------------------------
 
     private static final String[][] CURRENCY_FIELDS = {
-            {"Mince", "_CoinsNo"},
-            {"Bankovky", "_BillsNo"},
-            {"Kameny", "_StonesNo"},
-            {"Lajky", "_LikesNo"},
-            {"XP", "_XPNum"},
-            {"Dynamity I", "_MultiDigToolsNo"},
-            {"Dynamity II", "_MultiDig2ToolsNo"},
-            {"Zlaté krumpáče", "_NumGoldenPickaxe"},
-            {"Gemy I", "_MultiDigGemsNo"},
-            {"Gemy II", "_MultiDig2GemsNo"},
+            {"Mince", "_CoinsNo"}, {"Bankovky", "_BillsNo"}, {"Kameny", "_StonesNo"},
+            {"Lajky", "_LikesNo"}, {"XP", "_XPNum"}, {"Dynamity I", "_MultiDigToolsNo"},
+            {"Dynamity II", "_MultiDig2ToolsNo"}, {"Zlaté krumpáče", "_NumGoldenPickaxe"},
+            {"Gemy I", "_MultiDigGemsNo"}, {"Gemy II", "_MultiDig2GemsNo"},
             {"Vejce v inkubátoru", "_IncubatedEggsNo"},
     };
 
@@ -204,31 +198,21 @@ public class MainActivity extends Activity {
         if (!requireLoaded()) return;
         String[] labels = new String[CURRENCY_FIELDS.length];
         for (int i = 0; i < labels.length; i++) {
-            Object val = currentData.opt(CURRENCY_FIELDS[i][1]);
-            labels[i] = CURRENCY_FIELDS[i][0] + ": " + val;
+            labels[i] = CURRENCY_FIELDS[i][0] + ": " + currentData.opt(CURRENCY_FIELDS[i][1]);
         }
-        new AlertDialog.Builder(this)
-                .setTitle("Měna a zdroje")
+        new AlertDialog.Builder(this).setTitle("Měna a zdroje")
                 .setItems(labels, (dialog, which) -> promptCurrencyValue(CURRENCY_FIELDS[which][0], CURRENCY_FIELDS[which][1]))
-                .setNegativeButton("Zpět", null)
-                .show();
+                .setNegativeButton("Zpět", null).show();
     }
 
     private void promptCurrencyValue(String label, String field) {
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_SIGNED);
-        new AlertDialog.Builder(this)
-                .setTitle(label)
-                .setView(input)
+        new AlertDialog.Builder(this).setTitle(label).setView(input)
                 .setPositiveButton("OK", (d, w) -> {
-                    try {
-                        log(DinoEngine.setCurrency(currentData, field, input.getText().toString()));
-                    } catch (Exception e) {
-                        log("CHYBA: " + e.getMessage());
-                    }
-                })
-                .setNegativeButton("Zrušit", null)
-                .show();
+                    try { log(DinoEngine.setCurrency(currentData, field, input.getText().toString())); }
+                    catch (Exception e) { log("CHYBA: " + e.getMessage()); }
+                }).setNegativeButton("Zrušit", null).show();
     }
 
     // ---- dinosauři ------------------------------------------------------
@@ -237,106 +221,66 @@ public class MainActivity extends Activity {
         if (!requireLoaded()) return;
         try {
             String list = DinoEngine.listDinos(currentData);
-            if (list.startsWith("Žádní")) {
-                log(list);
-                return;
-            }
+            if (list.startsWith("Žádní")) { log(list); return; }
             String[] lines = list.split("\n");
-            new AlertDialog.Builder(this)
-                    .setTitle("🦕 Dinosauři")
+            new AlertDialog.Builder(this).setTitle("🦕 Dinosauři")
                     .setItems(lines, (dialog, which) -> editDino(which))
-                    .setNegativeButton("Zpět", null)
-                    .show();
-        } catch (Exception e) {
-            log("CHYBA: " + e.getMessage());
-        }
+                    .setNegativeButton("Zpět", null).show();
+        } catch (Exception e) { log("CHYBA: " + e.getMessage()); }
     }
 
     private void menuCages() {
         if (!requireLoaded()) return;
         try {
             final String list = DinoEngine.listCages(currentData);
-            if (list.isEmpty()) {
-                log("Žádné klece.");
-                return;
-            }
+            if (list.isEmpty()) { log("Žádné klece."); return; }
             final String[] cages = list.split("\n");
-            new AlertDialog.Builder(this)
-                    .setTitle("Úrovně klecí")
+            new AlertDialog.Builder(this).setTitle("Úrovně klecí")
                     .setItems(cages, (dialog, which) -> {
                         String[] parts = cages[which].split("\\|", 3);
-                        if (parts.length < 3) {
-                            log("CHYBA: neplatný záznam klece.");
-                            return;
-                        }
+                        if (parts.length < 3) { log("CHYBA: neplatný záznam klece."); return; }
                         promptCageLevel(parts[0].trim(), parts[2].trim(), parts[1].trim());
-                    })
-                    .setNegativeButton("Zpět", null)
-                    .show();
-        } catch (Exception e) {
-            log("CHYBA: " + e.getMessage());
-        }
+                    }).setNegativeButton("Zpět", null).show();
+        } catch (Exception e) { log("CHYBA: " + e.getMessage()); }
     }
 
     private void promptCageLevel(final String cageId, String currentLevel, String dinoName) {
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_NUMBER);
         input.setText(currentLevel);
-        new AlertDialog.Builder(this)
-                .setTitle("Nová úroveň klece " + dinoName)
-                .setView(input)
+        new AlertDialog.Builder(this).setTitle("Nová úroveň klece " + dinoName).setView(input)
                 .setPositiveButton("OK", (d, w) -> {
-                    try {
-                        log(DinoEngine.setCageLevel(currentData, cageId, input.getText().toString()));
-                    } catch (Exception e) {
-                        log("CHYBA: " + e.getMessage());
-                    }
-                })
-                .setNegativeButton("Zrušit", null)
-                .show();
+                    try { log(DinoEngine.setCageLevel(currentData, cageId, input.getText().toString())); }
+                    catch (Exception e) { log("CHYBA: " + e.getMessage()); }
+                }).setNegativeButton("Zrušit", null).show();
     }
 
     private void editDino(final int idx) {
         String[] actions = {"Změnit level", "Přepnout UNICORN", "Nastavit boosty"};
-        new AlertDialog.Builder(this)
-                .setTitle("Úprava dino #" + idx)
+        new AlertDialog.Builder(this).setTitle("Úprava dino #" + idx)
                 .setItems(actions, (dialog, which) -> {
                     if (which == 0) promptDinoLevel(idx);
                     else if (which == 1) toggleDinoSpecial(idx);
                     else promptDinoBoost(idx);
-                })
-                .setNegativeButton("Zpět", null)
-                .show();
+                }).setNegativeButton("Zpět", null).show();
     }
 
     private void promptDinoLevel(final int idx) {
         final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER;
-        new AlertDialog.Builder(this)
-                .setTitle("Nový level (max 6)")
-                .setView(input)
+        input.setInputType(InputType.TYPE_CLASS_NUMBER);
+        new AlertDialog.Builder(this).setTitle("Nový level (max 6)").setView(input)
                 .setPositiveButton("OK", (d, w) -> {
-                    try {
-                        log(DinoEngine.dinoSetLevel(currentData, idx, input.getText().toString()));
-                    } catch (Exception e) {
-                        log("CHYBA: " + e.getMessage());
-                    }
-                })
-                .setNegativeButton("Zrušit", null)
-                .show();
+                    try { log(DinoEngine.dinoSetLevel(currentData, idx, input.getText().toString())); }
+                    catch (Exception e) { log("CHYBA: " + e.getMessage()); }
+                }).setNegativeButton("Zrušit", null).show();
     }
 
     private void toggleDinoSpecial(final int idx) {
-        new AlertDialog.Builder(this)
-                .setTitle("UNICORN?")
+        new AlertDialog.Builder(this).setTitle("UNICORN?")
                 .setItems(new String[]{"Ano", "Ne"}, (d, which) -> {
-                    try {
-                        log(DinoEngine.dinoSetSpecial(currentData, idx, which == 0));
-                    } catch (Exception e) {
-                        log("CHYBA: " + e.getMessage());
-                    }
-                })
-                .show();
+                    try { log(DinoEngine.dinoSetSpecial(currentData, idx, which == 0)); }
+                    catch (Exception e) { log("CHYBA: " + e.getMessage()); }
+                }).show();
     }
 
     private void promptDinoBoost(final int idx) {
@@ -347,20 +291,11 @@ public class MainActivity extends Activity {
         final EditText h = addLabeledInput(layout, "BoostHP (prázdné = beze změny)");
         final EditText s = addLabeledInput(layout, "BoostSpeed (prázdné = beze změny)");
         final EditText df = addLabeledInput(layout, "BoostDefense (prázdné = beze změny)");
-        new AlertDialog.Builder(this)
-                .setTitle("Boosty dino #" + idx)
-                .setView(layout)
+        new AlertDialog.Builder(this).setTitle("Boosty dino #" + idx).setView(layout)
                 .setPositiveButton("OK", (d, w) -> {
-                    try {
-                        log(DinoEngine.dinoSetBoost(currentData, idx,
-                                p.getText().toString(), h.getText().toString(),
-                                s.getText().toString(), df.getText().toString()));
-                    } catch (Exception e) {
-                        log("CHYBA: " + e.getMessage());
-                    }
-                })
-                .setNegativeButton("Zrušit", null)
-                .show();
+                    try { log(DinoEngine.dinoSetBoost(currentData, idx, p.getText().toString(), h.getText().toString(), s.getText().toString(), df.getText().toString())); }
+                    catch (Exception e) { log("CHYBA: " + e.getMessage()); }
+                }).setNegativeButton("Zrušit", null).show();
     }
 
     private EditText addLabeledInput(LinearLayout parent, String hint) {
@@ -378,16 +313,10 @@ public class MainActivity extends Activity {
         final String[] fields = DinoEngine.UNLOCK_FIELDS;
         boolean[] checked = new boolean[fields.length];
         for (int i = 0; i < fields.length; i++) checked[i] = currentData.optBoolean(fields[i], false);
-        new AlertDialog.Builder(this)
-                .setTitle("Odemčené funkce")
+        new AlertDialog.Builder(this).setTitle("Odemčené funkce")
                 .setMultiChoiceItems(fields, checked, (dialog, which, isChecked) -> {
-                    try {
-                        currentData.put(fields[which], isChecked);
-                    } catch (Exception ignored) {
-                    }
-                })
-                .setPositiveButton("Hotovo", (d, w) -> log("Odemčené funkce upraveny."))
-                .show();
+                    try { currentData.put(fields[which], isChecked); } catch (Exception ignored) { }
+                }).setPositiveButton("Hotovo", (d, w) -> log("Odemčené funkce upraveny.")).show();
     }
 
     // ---- úrovně -------------------------------------------------------
@@ -401,18 +330,11 @@ public class MainActivity extends Activity {
         final EditText ticket = addLabeledInput(layout, "Level pokladny (max 4)");
         bank.setText(String.valueOf(currentData.opt("_BankLevel")));
         ticket.setText(String.valueOf(currentData.opt("_TicketBoothLevel")));
-        new AlertDialog.Builder(this)
-                .setTitle("Úrovně banky/pokladny")
-                .setView(layout)
+        new AlertDialog.Builder(this).setTitle("Úrovně banky/pokladny").setView(layout)
                 .setPositiveButton("OK", (d, w) -> {
-                    try {
-                        log(DinoEngine.setLevelsSafe(currentData, bank.getText().toString(), ticket.getText().toString()));
-                    } catch (Exception e) {
-                        log("CHYBA: " + e.getMessage());
-                    }
-                })
-                .setNegativeButton("Zrušit", null)
-                .show();
+                    try { log(DinoEngine.setLevelsSafe(currentData, bank.getText().toString(), ticket.getText().toString())); }
+                    catch (Exception e) { log("CHYBA: " + e.getMessage()); }
+                }).setNegativeButton("Zrušit", null).show();
     }
 
     // ---- aréna --------------------------------------------------------
@@ -428,20 +350,10 @@ public class MainActivity extends Activity {
         final EditText wm = addLabeledInput(layout, "Výhry MP");
         final EditText lm = addLabeledInput(layout, "Prohry MP");
         final EditText ls = addLabeledInput(layout, "Série proher");
-        new AlertDialog.Builder(this)
-                .setTitle("Aréna")
-                .setView(layout)
+        new AlertDialog.Builder(this).setTitle("Aréna").setView(layout)
                 .setPositiveButton("OK", (d, w) -> {
-                    try {
-                        log(DinoEngine.setArena(currentData,
-                                rank.getText().toString(), rating.getText().toString(),
-                                wt.getText().toString(), wm.getText().toString(),
-                                lm.getText().toString(), ls.getText().toString()));
-                    } catch (Exception e) {
-                        log("CHYBA: " + e.getMessage());
-                    }
-                })
-                .setNegativeButton("Zrušit", null)
-                .show();
+                    try { log(DinoEngine.setArena(currentData, rank.getText().toString(), rating.getText().toString(), wt.getText().toString(), wm.getText().toString(), lm.getText().toString(), ls.getText().toString())); }
+                    catch (Exception e) { log("CHYBA: " + e.getMessage()); }
+                }).setNegativeButton("Zrušit", null).show();
     }
 }
