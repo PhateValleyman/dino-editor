@@ -55,10 +55,10 @@ The APK is created at:
 
 The editor uses `su` and therefore requires a rooted Android device with Magisk/root access.
 
-The default save path is `/data/data/pl.idreams.Dino/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml`.
-The loader first runs `dumpsys package pl.idreams.Dino` as root, obtains the actual
-`dataDir`, and searches its `shared_prefs` directory for any XML containing
-`<string name="save">`. It then falls back to `/data/user/0/...` and `/data/data/...`.
+The default save path is `/data/user/0/pl.idreams.Dino/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml`.
+The loader first searches `/data/user/0/pl.idreams.Dino/shared_prefs`, then the
+`dataDir` reported by `dumpsys package pl.idreams.Dino`, and finally
+`/data/data/...`. It accepts any XML containing `<string name="save">`.
 No `aapt2` binary is required or bundled; `dumpsys` is part of Android.
 
 The game is force-stopped before reading/writing the save.

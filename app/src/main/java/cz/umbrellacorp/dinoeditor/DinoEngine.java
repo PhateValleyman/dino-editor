@@ -10,8 +10,10 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -21,6 +23,12 @@ import java.util.regex.Pattern;
  * a jednotlivé editační operace nad ním.
  */
 public class DinoEngine {
+
+    private static final Map<String, String> DINO_NAMES = new HashMap<>();
+
+    static {
+        DINO_NAMES.put("Dino9", "Smilodon");
+    }
 
     public static final String[] UNLOCK_FIELDS = {
             "_TopPanelUnlocked", "_ExpeditionUnlocked", "_IncubatorUnlocked",
@@ -122,11 +130,12 @@ public class DinoEngine {
         for (int i = 0; i < dinos.size(); i++) {
             JSONObject dn = dinos.get(i).dino;
             boolean special = dn.optBoolean("_Special", false);
+            String dinoId = dn.optString("_ID", "Neznámý");
             sb.append(special ? "🦄 " : "🦕 ")
                     .append("#").append(i + 1)
-                    .append("  •  ").append(dn.opt("_ID"))
+                    .append("  •  ").append(dinoName(dinoId))
                     .append("  •  Level ").append(dn.opt("_Level"))
-                    .append("  •  Klec ").append(dinos.get(i).cageId)
+                    .append("  •  Klec ").append(dinoName(dinos.get(i).cageId))
                     .append(special ? "  •  UNICORN" : "")
                     .append('\n');
         }
@@ -142,8 +151,15 @@ public class DinoEngine {
         while (it.hasNext()) {
             String cageId = it.next();
             JSONObject cage = cages.getJSONObject(cageId);
+            String dinoId = cage.optString("_DinoID", cageId);
             if (sb.length() > 0) sb.append('\n');
-            sb.append(cageId).append(" | ").append(cage.optInt("_CurrentLevel", 0));
+            sb.append(cageId).append(" | ").append(dinoName(dinoId))
+                    .append(" | ").append(cage.optInt("_CurrentLevel", 0));
+        }
+
+        private static String dinoName(String dinoId) {
+            String name = DINO_NAMES.get(dinoId);
+            return name == null ? dinoId : name;
         }
         return sb.toString();
     }

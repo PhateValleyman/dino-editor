@@ -94,8 +94,8 @@ public class RootShell {
         String command =
                 "data_dir=$(dumpsys package " + quote(pkg) +
                 " 2>/dev/null | sed -n 's/^[[:space:]]*dataDir=//p' | head -n 1); " +
-                "for base in \"$data_dir/shared_prefs\" " +
-                "/data/user/0/" + pkg + "/shared_prefs " +
+                "for base in /data/user/0/" + pkg + "/shared_prefs " +
+                "\"$data_dir/shared_prefs\" " +
                 "/data/data/" + pkg + "/shared_prefs; do " +
                 "[ -d \"$base\" ] || continue; " +
                 "for f in \"$base\"/*.xml; do " +

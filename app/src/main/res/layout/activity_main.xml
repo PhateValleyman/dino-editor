@@ -14,7 +14,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="Cesta k save souboru"
-            android:text="/data/data/pl.idreams.Dino/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml" />
+            android:text="/data/user/0/pl.idreams.Dino/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml" />
 
         <Button
             android:id="@+id/btnLoad"

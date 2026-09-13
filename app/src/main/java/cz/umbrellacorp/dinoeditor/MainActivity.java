@@ -14,7 +14,7 @@ public class MainActivity extends Activity {
 
     private static final String PKG = "pl.idreams.Dino";
     private static final String ACTIVITY = PKG + "/com.unity3d.player.UnityPlayerActivity";
-    private static final String DEFAULT_PATH = "/data/data/" + PKG + "/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml";
+    private static final String DEFAULT_PATH = "/data/user/0/" + PKG + "/shared_prefs/pl.idreams.Dino.v2.playerprefs.xml";
 
     private EditText editPath;
     private TextView txtLog;
@@ -243,9 +243,9 @@ public class MainActivity extends Activity {
             new AlertDialog.Builder(this)
                     .setTitle("Úrovně klecí")
                     .setItems(cages, (dialog, which) -> {
-                        String[] parts = cages[which].split("\\|", 2);
+                        String[] parts = cages[which].split("\\|", 3);
                         String cageId = parts[0].trim();
-                        promptCageLevel(cageId, parts[1].trim());
+                        promptCageLevel(cageId, parts[2].trim(), parts[1].trim());
                     })
                     .setNegativeButton("Zpět", null)
                     .show();
@@ -254,12 +254,12 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void promptCageLevel(final String cageId, String currentLevel) {
+    private void promptCageLevel(final String cageId, String currentLevel, String dinoName) {
         final EditText input = new EditText(this);
         input.setInputType(InputType.TYPE_CLASS_NUMBER);
         input.setText(currentLevel);
         new AlertDialog.Builder(this)
-                .setTitle("Nová úroveň klece " + cageId)
+                .setTitle("Nová úroveň klece " + dinoName)
                 .setView(input)
                 .setPositiveButton("OK", (d, w) -> {
                     try {
