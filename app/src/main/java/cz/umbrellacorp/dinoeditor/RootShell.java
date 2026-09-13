@@ -107,13 +107,18 @@ public final class RootShell {
 
     /**
      * Writes UTF-8 content through a temporary file in the same directory and
-     * renames it over the original. This prevents a failed/interrupted write
-     * from leaving a truncated PlayerPrefs file.
+     * renames it over the original. The temporary file must be non-empty before
+     * the rename, preventing an accidental empty save from replacing the real one.
      */
     public static void writeFile(String path, String content) throws IOException {
+        if (content == null || content.isEmpty()) {
+            throw new IOException("Nelze zapsat prázdný obsah save.");
+        }
+
         String tempPath = path + ".tmp." + Long.toHexString(System.nanoTime());
-        String command = "cat > " + quote(tempPath) + " && mv -f " +
-                quote(tempPath) + " " + quote(path);
+        String command = "cat > " + quote(tempPath) +
+                " && test -s " + quote(tempPath) +
+                " && mv -f " + quote(tempPath) + " " + quote(path);
 
         try {
             Process p = new ProcessBuilder("su", "-c", command).start();
