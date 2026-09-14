@@ -8,9 +8,14 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MainActivity extends Activity {
@@ -43,14 +48,7 @@ public class MainActivity extends Activity {
         findViewById(R.id.btnUnlocks).setOnClickListener(v -> menuUnlocks());
         findViewById(R.id.btnLevels).setOnClickListener(v -> menuLevels());
         findViewById(R.id.btnArena).setOnClickListener(v -> menuArena());
-        findViewById(R.id.btnBones).setOnClickListener(v -> {
-            if (!requireLoaded()) return;
-            try {
-                log(DinoEngine.fillBones(currentData));
-            } catch (Exception e) {
-                log("CHYBA: " + e.getMessage());
-            }
-        });
+        findViewById(R.id.btnBones).setOnClickListener(v -> menuBones());
         findViewById(R.id.btnSave).setOnClickListener(v -> saveAndLaunch());
     }
 
@@ -309,6 +307,148 @@ public class MainActivity extends Activity {
         e.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_SIGNED);
         parent.addView(e);
         return e;
+    }
+
+    // ---- kosti -----------------------------------------------------------
+
+    private static final class BoneTarget {
+        final String chestId;
+        final String displayName;
+        final int boneTypes;
+        final boolean discovered;
+
+        BoneTarget(String chestId, String displayName, int boneTypes, boolean discovered) {
+            this.chestId = chestId;
+            this.displayName = displayName;
+            this.boneTypes = boneTypes;
+            this.discovered = discovered;
+        }
+    }
+
+    private List<BoneTarget> getBoneTargets() throws Exception {
+        JSONObject chests = currentData.optJSONObject("_Chests");
+        if (chests == null) return new ArrayList<>();
+
+        JSONObject cages = currentData.optJSONObject("_Cages");
+        List<BoneTarget> targets = new ArrayList<>();
+
+        for (java.util.Iterator<String> it = chests.keys(); it.hasNext();) {
+            String chestId = it.next();
+            JSONObject chest = chests.optJSONObject(chestId);
+            if (chest == null) continue;
+
+            JSONObject index = chest.optJSONObject("_ReconstructionBonesIndex");
+            if (index == null || index.length() == 0) continue;
+
+            String dinoId = chestId;
+            if (chest.has("_DinoID")) {
+                dinoId = chest.optString("_DinoID", chestId);
+            }
+
+            boolean discovered = cages != null && cages.has(dinoId);
+            String status = discovered ? "objevený" : "NEOBJEVENÝ";
+            targets.add(new BoneTarget(
+                    chestId,
+                    dinoId + " — " + status,
+                    index.length(),
+                    discovered
+            ));
+        }
+
+        Collections.sort(targets, Comparator.comparing(a -> a.chestId, MainActivity::compareDinoIds));
+        return targets;
+    }
+
+    private static int compareDinoIds(String a, String b) {
+        try {
+            return Integer.compare(
+                    Integer.parseInt(a.replace("Dino", "")),
+                    Integer.parseInt(b.replace("Dino", "")));
+        } catch (NumberFormatException ignored) {
+            return a.compareTo(b);
+        }
+    }
+
+    private void menuBones() {
+        if (!requireLoaded()) return;
+
+        try {
+            List<BoneTarget> targets = getBoneTargets();
+            if (targets.isEmpty()) {
+                log("V save nebyly nalezeny žádné _ReconstructionBonesIndex.");
+                return;
+            }
+
+            String[] items = new String[targets.size() + 1];
+            items[0] = "VŠICHNI — doplnit kosti u všech dinosaurů";
+            for (int i = 0; i < targets.size(); i++) {
+                BoneTarget t = targets.get(i);
+                items[i + 1] = (t.discovered ? "🦕 " : "❗ ")
+                        + t.displayName + " — " + t.boneTypes + " typů kostí";
+            }
+
+            new AlertDialog.Builder(this)
+                    .setTitle("Kosti dinosaurů")
+                    .setItems(items, (dialog, which) -> {
+                        try {
+                            if (which == 0) {
+                                log(DinoEngine.fillBones(currentData));
+                                return;
+                            }
+
+                            BoneTarget target = targets.get(which - 1);
+                            String result = fillBonesForChest(target.chestId);
+                            log(result);
+                        } catch (Exception e) {
+                            log("CHYBA: " + e.getMessage());
+                        }
+                    })
+                    .setNegativeButton("Zpět", null)
+                    .show();
+        } catch (Exception e) {
+            log("CHYBA: " + e.getMessage());
+        }
+    }
+
+    private String fillBonesForChest(String chestId) throws Exception {
+        JSONObject chests = currentData.optJSONObject("_Chests");
+        if (chests == null) throw new Exception("_Chests chybí.");
+
+        JSONObject chest = chests.optJSONObject(chestId);
+        if (chest == null) throw new Exception("Truhla neexistuje: " + chestId);
+
+        JSONObject index = chest.optJSONObject("_ReconstructionBonesIndex");
+        if (index == null || index.length() == 0) {
+            throw new Exception("Dinosaurus nemá _ReconstructionBonesIndex: " + chestId);
+        }
+
+        JSONObject bones = chest.optJSONObject("_Bones");
+        if (bones == null) {
+            bones = new JSONObject();
+            chest.put("_Bones", bones);
+        }
+
+        int changed = 0;
+        java.util.Iterator<String> it = index.keys();
+        while (it.hasNext()) {
+            String bone = it.next();
+            int needed = index.optInt(bone, 0);
+            int current = bones.optInt(bone, 0);
+            int target = Math.max(Math.max(current, needed), 999);
+            if (current != target) {
+                bones.put(bone, target);
+                changed++;
+            }
+        }
+
+        String dinoId = chest.has("_DinoID") ? chest.optString("_DinoID", chestId) : chestId;
+        return "OK — " + dinoId + ": doplněno " + changed
+                + " typů kostí na 999."
+                + "\nDinosaurus "
+                + (currentData.optJSONObject("_Cages") != null
+                    && currentData.optJSONObject("_Cages").has(dinoId)
+                    ? "je objevený."
+                    : "je NEOBJEVENÝ — kosti byly doplněny přímo do jeho truhly.");
     }
 
     // ---- odemčené funkce --------------------------------------------------
