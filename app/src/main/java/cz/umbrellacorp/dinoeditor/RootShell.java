@@ -106,9 +106,14 @@ public final class RootShell {
     }
 
     /**
-     * Writes UTF-8 content through a temporary file in the same directory and
-     * renames it over the original. The temporary file must be non-empty before
-     * the rename, preventing an accidental empty save from replacing the real one.
+     * Writes UTF-8 content through a temporary file in the same directory.
+     *
+     * The original PlayerPrefs metadata is captured before writing and applied
+     * to the temporary file before the atomic rename. This is important on
+     * Android: replacing an app-private file with a root-created file can leave
+     * the new file owned by root, making the game unable to read its own save.
+     *
+     * The operation fails safely if the original metadata cannot be read.
      */
     public static void writeFile(String path, String content) throws IOException {
         if (content == null || content.isEmpty()) {
@@ -116,9 +121,15 @@ public final class RootShell {
         }
 
         String tempPath = path + ".tmp." + Long.toHexString(System.nanoTime());
-        String command = "cat > " + quote(tempPath) +
-                " && test -s " + quote(tempPath) +
-                " && mv -f " + quote(tempPath) + " " + quote(path);
+        String command =
+                "set -- $(stat -c '%u %g %a' " + quote(path) + ") && " +
+                "[ $# -eq 3 ] && " +
+                "uid=$1; gid=$2; mode=$3; " +
+                "cat > " + quote(tempPath) + " && " +
+                "test -s " + quote(tempPath) + " && " +
+                "chown \"$uid:$gid\" " + quote(tempPath) + " && " +
+                "chmod \"$mode\" " + quote(tempPath) + " && " +
+                "mv -f " + quote(tempPath) + " " + quote(path);
 
         try {
             Process p = new ProcessBuilder("su", "-c", command).start();
@@ -136,8 +147,11 @@ public final class RootShell {
             errThread.join();
 
             if (code != 0) {
-                throw new IOException("Zápis selhal (kód " + code + "): " +
-                        new String(err.toByteArray(), StandardCharsets.UTF_8).trim());
+                String detail = new String(err.toByteArray(), StandardCharsets.UTF_8).trim();
+                if (detail.isEmpty()) {
+                    detail = "Nelze zachovat vlastníka/práva původního souboru.";
+                }
+                throw new IOException("Zápis selhal (kód " + code + "): " + detail);
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
